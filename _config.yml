@@ -1,0 +1,38 @@
+# GitHub Pages builds this site with the github-pages gem (Jekyll 3.10,
+# minima 2.5): https://pages.github.com/versions/
+title: Igor Suhorukov
+author: Igor Suhorukov
+description: >-
+  Blog posts about open-source and technology.
+url: "https://igor-suhorukov.github.io"
+baseurl: "/blog"
+lang: en
+github_username: igor-suhorukov
+
+theme: minima
+plugins:
+  - jekyll-feed
+  - jekyll-seo-tag
+  - jekyll-sitemap
+
+permalink: /:year/:month/:day/:title/
+show_excerpts: true
+
+defaults:
+  - scope:
+      path: ""
+      type: posts
+    values:
+      layout: post
+      author: Igor Suhorukov
+
+# Jekyll 3 replaces its default exclude list with this one.
+exclude:
+  - README.md
+  - scripts/
+  - Gemfile
+  - Gemfile.lock
+  - vendor/
+  - node_modules/
+  - .jekyll-cache/
+  - .sass-cache/

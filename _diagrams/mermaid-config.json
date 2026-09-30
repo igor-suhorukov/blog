@@ -1,0 +1,7 @@
+{
+  "theme": "default",
+  "flowchart": { "useMaxWidth": false },
+  "sequence": { "useMaxWidth": false },
+  "gantt": { "useMaxWidth": false },
+  "mindmap": { "useMaxWidth": false }
+}

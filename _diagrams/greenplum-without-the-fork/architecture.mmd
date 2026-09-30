@@ -1,0 +1,48 @@
+flowchart TB
+  subgraph clients["Clients and tools"]
+    client["psql, BI tools, drivers"]
+    mgmt["gpMgmt: gpinitsystem, gpstart,<br/>gpstate, gprecoverseg, gpexpand"]
+    load["gpfdist, s3://, PXF"]
+    gpfts["gpfts ×2 + etcd"]
+  end
+  subgraph port["Port modules in pg19/"]
+    subgraph mpp["MPP core"]
+      core["gp_core<br/>dispatcher, interconnect, 2PC,<br/>distributed snapshots, FTS, GDD"]
+      orca["gp_orca<br/>ORCA + translator"]
+      sql["gp_sql<br/>Cloudberry syntax (O26),<br/>tags, directory tables"]
+    end
+    subgraph svc["Storage and services"]
+      storage["gp_ao, pax<br/>append-optimized + PAX"]
+      ext["gp_exttable, pxf_fdw,<br/>gpcloud, datalake_fdw"]
+      misc["gp_resource, gp_matview, gp_task,<br/>gp_security, diskquota, …"]
+    end
+  end
+  subgraph stock["Stock extensions"]
+    postgis["PostGIS 3.7"]
+    pgvector["pgvector 0.8.6"]
+  end
+  subgraph pg["PostgreSQL 19 + 22 commits"]
+    api["Standard extension points:<br/>hooks, table AM, CustomScan,<br/>custom WAL rmgrs, bgworkers,<br/>security labels, FDW"]
+    patches["22 dormant hooks<br/>+1,578 / −41 lines"]
+  end
+  subgraph src["Cloudberry sources, unmodified"]
+    orcacore["ORCA core: 920 files,<br/>~380k lines"]
+    cbsrc["PAX, UDP2, GDD, cgroups,<br/>vmem tracker, etcd client"]
+  end
+  client --> core
+  mgmt --> core
+  gpfts --> core
+  load --> ext
+  core --> api
+  core --> patches
+  orca --> api
+  sql --> patches
+  storage --> patches
+  ext --> api
+  misc --> api
+  postgis --> api
+  pgvector --> api
+  orca -. compiled in place .-> orcacore
+  storage -.-> cbsrc
+  misc -.-> cbsrc
+  core -. scripts and settings on every node .-> stock

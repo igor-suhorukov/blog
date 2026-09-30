@@ -1,0 +1,14 @@
+mindmap
+  root((Analytics on PostgreSQL data))
+    Scale out to many nodes
+      Apache Cloudberry, this port: MPP with one plan per cluster, Motions between segments, distributed snapshots, ORCA
+      Citus: sharding, SQL fragments per shard, 2PC without a global snapshot
+    Faster on one node
+      pg_duckdb: DuckDB's vectorized engine inside the backend
+      PG-Strom: GPUs and GPUDirect SQL
+    Data in the lake: Parquet, Iceberg
+      pg_lake: Iceberg tables, DuckDB in a sidecar process
+      pg_mooncake: columnar mirrors in Iceberg
+    Separate OLAP engines
+      ClickHouse: vectorized columnar, its own SQL dialect
+      StarRocks: vectorized MPP, Cascades CBO, MySQL protocol

@@ -1,0 +1,16 @@
+sequenceDiagram
+  actor C as Client
+  participant QD as Coordinator (gp_core)
+  participant PG as Coordinator (CommitTransaction)
+  participant S as Segments that wrote
+  C->>QD: COMMIT
+  QD->>S: PREPARE TRANSACTION 'gp_dtx_#lt;xid#gt;'<br/>(xid = the coordinator's FullTransactionId)
+  S-->>QD: prepared
+  QD->>PG: commit locally
+  PG->>PG: RecordTransactionCommit()<br/>commit record on disk, outcome decided
+  PG->>QD: xact_commit_recorded_hook (O33)
+  QD->>S: COMMIT PREPARED 'gp_dtx_#lt;xid#gt;'
+  S-->>QD: committed
+  PG->>PG: ProcArrayEndTransaction()<br/>now visible to other sessions
+  QD-->>C: COMMIT
+  Note over QD,S: One segment wrote and the coordinator did not: one phase.<br/>A crash between phases: a coordinator background worker<br/>finishes prepared parts from the coordinator's clog.

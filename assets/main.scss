@@ -1,0 +1,43 @@
+---
+---
+
+// A wider column than minima's default 800px, for tables and diagrams.
+$content-width: 880px;
+
+@import "minima";
+
+// minima 2.5 shows an empty menu button on phones when no page is in the menu.
+.site-nav:not(:has(.page-link)) {
+  display: none;
+}
+
+// Wide tables scroll sideways instead of overflowing the column.
+.post-content table {
+  display: block;
+  width: fit-content;
+  max-width: 100%;
+  overflow-x: auto;
+  font-size: $small-font-size;
+
+  th, td {
+    padding: ($spacing-unit / 4);
+  }
+}
+
+// Diagrams are PNGs linked to their full-size files.
+.post-content figure.diagram {
+  margin: 0 0 $spacing-unit;
+  text-align: center;
+
+  img {
+    height: auto;
+  }
+}
+
+// Large diagrams may extend past the text column on wide screens.
+@media screen and (min-width: 1260px) {
+  .post-content figure.diagram.wide {
+    width: 1200px;
+    margin-left: calc(50% - 600px);
+  }
+}

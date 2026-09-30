@@ -1,0 +1,26 @@
+sequenceDiagram
+  actor C as Client
+  participant QD as Coordinator backend<br/>(PG19)
+  participant SQL as gp_sql<br/>(O26)
+  participant ORCA as gp_orca<br/>(planner_hook)
+  participant CORE as gp_core<br/>(dispatcher)
+  participant W as Segment writer
+  participant R as Segment readers
+  C->>QD: SELECT ... FROM sales<br/>JOIN items ...
+  QD->>SQL: raw_parser_hook(text)
+  SQL-->>QD: Cloudberry spelling<br/>rewritten to PG19's,<br/>then standard_raw_parser()
+  QD->>ORCA: planner_hook(Query)
+  ORCA->>ORCA: pre-ORCA rewrite<br/>(PostGIS index conditions),<br/>Query → DXL → ORCA →<br/>PlannedStmt with slices<br/>and Motion nodes
+  alt ORCA declines
+    ORCA->>ORCA: count the reason
+    ORCA-->>QD: standard_planner() +<br/>gp_core gathers<br/>(the gather route)
+  end
+  QD->>CORE: ExecutorStart /<br/>ExecutorRun hooks
+  CORE->>W: libpq: SET LOCAL<br/>gp.distributed_snapshot = ...#59;<br/>SELECT gp_internal.exec_fragment(<br/>slice, key)
+  CORE->>R: same for the reader slices<br/>(one gang per slice)
+  W->>R: transaction state via DSM:<br/>XactAdoptTransactionState()<br/>(R4), lock group
+  R->>R: Redistribute /<br/>Broadcast Motion<br/>over the interconnect
+  R->>W: rows for the writer's slice
+  W-->>CORE: Gather Motion<br/>(binary cursor, batched)
+  CORE-->>QD: tuples
+  QD-->>C: result
