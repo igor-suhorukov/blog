@@ -1,0 +1,46 @@
+---
+title: "How vexec uses the Cloudberry port's components"
+config:
+  flowchart:
+    wrappingWidth: 640
+---
+flowchart TB
+  V["vexec: the same module<br/>as on vanilla PostgreSQL"]
+
+  subgraph PORT["The Cloudberry port: PostgreSQL 19 modules (pg19/)"]
+    subgraph GPO["gp_orca"]
+      OAPI(["gp_orca_vec API 1.2"])
+      TR["DXL → plan translator:<br/>every finished node<br/>is offered to vexec"]
+      CCM["CCostModelVec:<br/>a subclass of CCostModelGPDB"]
+      ORCA["ORCA: four core<br/>libraries, unmodified"]
+    end
+    subgraph GPC["gp_core"]
+      CAPI(["GpCoreApi 1.15"])
+      MOT["GpMotion and interconnect:<br/>tcp, udpifc, udp2, proxy"]
+      CDB["cdbhash, squelch,<br/>EXPLAIN ANALYZE report"]
+      DISP["dispatcher: fragments<br/>with Vec nodes on segments"]
+      SYNC["vexec.* settings<br/>sent to the segments"]
+      M8["M8 parallel.c, bound_gathers():<br/>vexec's nodes through describe_node"]
+    end
+    PAX["PAX: porc, porc_vec<br/>group reads, aggregate(),<br/>set_keys(), sink"]
+    AO["gp_ao: ao_column<br/>block reads, sink"]
+    SHM["shm: a Motion transport<br/>over shared memory"]
+  end
+
+  CORE["PostgreSQL 19 + the port's 24 extension points:<br/>Cloudberry itself needs them, vexec doesn't call them"]
+
+  V -->|"oracle, pricing,<br/>build_node,<br/>describe_node,<br/>set_options,<br/>build_window"| OAPI
+  V -->|"Motions rebuilt, the<br/>policy's hash functions,<br/>hash_segment,<br/>squelch_subtree,<br/>explain_register"| CAPI
+  V -->|"vexec/source_v1,<br/>vexec/sink_v1"| PAX
+  V -->|"vexec/source_v1,<br/>vexec/sink_v1"| AO
+  V -.->|"CustomScan<br/>by name"| DISP
+  V -.->|"SET vexec.*"| SYNC
+
+  OAPI --> TR
+  OAPI --> CCM
+  CCM -->|"Cost()"| ORCA
+  CAPI --> MOT
+  CAPI --> CDB
+  SHM -->|"transport table<br/>(gp.interconnect_type<br/>= shm)"| MOT
+
+  PORT --> CORE

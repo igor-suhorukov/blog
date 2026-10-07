@@ -1,0 +1,56 @@
+---
+title: "pg_vexec: components"
+config:
+  flowchart:
+    wrappingWidth: 640
+---
+flowchart TB
+  FL["vexec_flight:<br/>Flight SQL on nghttp2,<br/>protobuf-c and OpenSSL"]
+  KP["vexec_pgvector,<br/>vexec_postgis:<br/>kernel packs"]
+  STOR["PAX, gp_ao:<br/>the Cloudberry port's storage"]
+
+  subgraph VEXEC["vexec (shared_preload_libraries)"]
+    PEGR(["vexec/egress_v1"])
+    PKRN(["vexec/kernels_v1"])
+    PSRC(["vexec/source_v1<br/>vexec/sink_v1"])
+    VE["egress API (egress/):<br/>DestReceiver, ingest stream"]
+    VP["Vectorized planner (plan/):<br/>oracle, cost model,<br/>node builders, reasons for EXPLAIN"]
+    VX["Expressions (expr/):<br/>kernels by function OID, the packs'<br/>declarations, fallback to ExecEvalExpr"]
+    VN["Vector nodes (exec/):<br/>VecScan, VecBitmapHeapScan, VecResult,<br/>VecAgg, VecHashJoin, VecSort, VecRepartition,<br/>VecWindowHashAgg, VecInsert, VecIngest,<br/>VecMotionSend, VecMotionReceive"]
+    VS["Sources (source/):<br/>heap's page reader,<br/>source and sink registries"]
+    VB["Batch (batch/):<br/>postgres and arrow formats,<br/>Arrow C Data Interface"]
+    VM["Motion frames (motion/):<br/>vectorized cdbhash"]
+    VI["Arrow IPC codec (ipc/)"]
+  end
+
+  subgraph PG["PostgreSQL 19 (REL_19_STABLE), unmodified core"]
+    PGP["PostgreSQL planner"]
+    PGE["Executor: CustomScan,<br/>fmgr, tuplesort, BufFile"]
+    AM["heap and other<br/>table access methods"]
+    PM["Postmaster:<br/>background workers"]
+  end
+
+  ORCA["gp_orca from the Cloudberry port;<br/>on vanilla PostgreSQL built with<br/>-Dorca_single_node, without gp_core"]
+
+  FL --> PEGR
+  KP -->|"function declarations"| PKRN
+  STOR -->|"batch readers and sinks"| PSRC
+  PEGR --> VE
+  PKRN --> VX
+  PSRC --> VS
+
+  VE --> VI
+  VE -->|"ingest stream"| VN
+  VP -->|"a path or an ORCA node<br/>→ CustomScan"| VN
+  VN --> VX
+  VN --> VS
+  VN --> VB
+  VN --> VM
+  VM --> VI
+
+  VP -->|"planner_setup_hook,<br/>set_rel_pathlist_hook,<br/>set_join_pathlist_hook,<br/>create_upper_paths_hook,<br/>planner_shutdown_hook,<br/>explain_per_plan_hook"| PGP
+  VP -->|"Cloudberry/gp_orca_vec_v1:<br/>oracle, pricing, build_node"| ORCA
+  VN -->|"CustomScanMethods"| PGE
+  VE -->|"ExecutorRun_hook,<br/>its own DestReceiver"| PGE
+  VS -->|"table_beginscan,<br/>heap_prepare_pagescan"| AM
+  FL -->|"a background worker<br/>per connection"| PM

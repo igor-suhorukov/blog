@@ -1,0 +1,46 @@
+---
+title: "V7: Arrow batches through Motions as Arrow IPC frames"
+config:
+  flowchart:
+    wrappingWidth: 640
+---
+flowchart TB
+  subgraph S2["Segments, slice 2: senders"]
+    scan["Vec Seq Scan on lg_h"]
+    send["Vec Motion Send<br/>- vectorized cdbhash: each row's segment<br/>- the batch split by receiving segment<br/>- a schema frame to each receiver once"]
+    rm["Explicit Redistribute Motion<br/>row: (NULL..., target int4, frame bytea)"]
+  end
+
+  subgraph S1["Segments, slice 1"]
+    recv["Vec Motion Receive<br/>the batch's columns point into the frame"]
+    scan2["Vec Seq Scan on lg_n"]
+    hj["Vec Hash Join"]
+    pa["Vec Partial Aggregate"]
+    send2["Vec Motion Send<br/>Frames To: the one gathering"]
+    gm["Gather Motion 3:1"]
+  end
+
+  subgraph QD["Coordinator"]
+    fetch["gp_core's gather: a binary libpq cursor,<br/>FETCH of up to 8 MB of frames"]
+    recv2["Vec Motion Receive"]
+    fa["Vec Finalize Aggregate"]
+  end
+
+  scan -->|"batches"| send
+  send -->|"frames"| rm
+  rm -->|"interconnect:<br/>tcp, udpifc, udp2, proxy<br/>or shm: a ring<br/>in a memfd, eventfd"| recv
+  recv -->|"batches"| hj
+  scan2 -->|"batches"| hj
+  hj --> pa
+  pa --> send2
+  send2 -->|"frames"| gm
+  gm -->|"bytea without<br/>send/receive<br/>for every value"| fetch
+  fetch --> recv2
+  recv2 -->|"batches"| fa
+
+  frame["A frame: 16 bytes of vexec's (#quot;VXF1#quot;, 0, schema hash)<br/>and one Arrow IPC message: Schema or RecordBatch.<br/>arrow format: the batch's buffers as they are.<br/>postgres format: whole varlenas, with their headers;<br/>the receiver's Datums point into the frame."]
+  shm["shm: the sender creates a memfd and passes the descriptor<br/>to the receiver over a UNIX socket (SCM_RIGHTS) after the statement token.<br/>Writing a frame into the ring is the only copy; the receiver reads it in place.<br/>A Broadcast is written once, into a shared ring."]
+  rm -.- frame
+  S1 -.- shm
+  classDef memo fill:#fffbe6,stroke:#d6b656,color:#333
+  class frame,shm memo

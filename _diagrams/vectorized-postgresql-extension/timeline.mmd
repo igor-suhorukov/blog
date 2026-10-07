@@ -1,0 +1,37 @@
+---
+config:
+  gantt:
+    useWidth: 1200
+    leftPadding: 170
+---
+gantt
+  title pg_vexec: from the plan to a working solution
+  dateFormat YYYY-MM-DD
+  axisFormat %a %d
+  tickInterval 1day
+  todayMarker off
+
+  section Plan
+  Research#58; six reports and the first plan, 08#58;42-12#58;47 :active, p1, 2026-10-02, 1d
+  Questions that changed the architecture, and three reports on formats, morning :active, p2, 2026-10-05, 1d
+
+  section Phases in sequence
+  VB#58; ClickBench baseline, 06#58;13-12#58;31 :vb, 2026-10-05, 1d
+  V0#58; groundwork, 10#58;37-14#58;01 :v0, 2026-10-05, 1d
+  V1#58; scans, filters, projections, 17#58;07-22#58;01 :v1, 2026-10-05, 1d
+  V2#58; aggregation, 22#58;20-04#58;18 :v2, 2026-10-05, 2d
+  V3#58; hash join, 04#58;42-07#58;37 :v3, 2026-10-06, 1d
+
+  section Parallel sessions
+  V4#58; heap, parallel paths, sorts, 07#58;46-12#58;20 :v4, 2026-10-06, 1d
+  V6#58; ORCA on vanilla PostgreSQL 19, 09#58;54-10#58;59 :v6, 2026-10-06, 1d
+  V5#58; CCostModelVec and VecWindowHashAgg, 11#58;59-18#58;24 :v5, 2026-10-06, 1d
+  V7_0 and V10#58; Arrow IPC codec and Flight SQL, 12#58;15-18#58;52 :v10, 2026-10-06, 1d
+  VK#58; kernel packs for pgvector and PostGIS, 16#58;36-18#58;29 :vk, 2026-10-06, 1d
+  VI#58; batch inserts, 05#58;39-07#58;51 :vi, 2026-10-07, 1d
+  V7#58; batches through Motions and shm, 05#58;55-10#58;51 :v7, 2026-10-07, 1d
+
+  section Performance measurements
+  V2 measurement#58; tpc, 12 of 32 runs, 02#58;43-05#58;30 :done, m2, 2026-10-06, 1d
+  Flight SQL with ADBC on TPC-H Q1, 18#58;20 :milestone, mf, 2026-10-06, 1d
+  ClickBench on ORCA in vanilla PostgreSQL 19, 21#58;41-01#58;55 :done, mc, 2026-10-06, 2d

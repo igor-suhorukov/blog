@@ -1,0 +1,51 @@
+sequenceDiagram
+  title Flight SQL: a query and an insert through vexec_flight
+  autonumber
+  actor C as Client:<br/>ADBC Flight SQL,<br/>JDBC, pyarrow
+  participant A as Acceptor:<br/>a background worker<br/>without threads
+  participant PM as Postmaster
+  participant S as Session:<br/>a dynamic background<br/>worker, one thread
+  participant V as vexec:<br/>egress API,<br/>VecIngest, VecInsert
+  participant E as Executor:<br/>portal, Vec nodes
+  participant T as Table:<br/>heap, PAX,<br/>ao_column
+
+  C->>A: TCP, port 32010
+  A->>PM: RegisterDynamicBackgroundWorker(token)
+  PM->>S: fork
+  A->>S: the client's socket over a UNIX socket (SCM_RIGHTS)
+  C<<->>S: TLS (ALPN h2) or plaintext#59; HTTP/2
+  C->>S: Handshake: authorization: Basic ..., database
+  S->>A: login, client address, TLS
+  A->>A: pg_hba.conf, password, rolcanlogin,<br/>rolvaliduntil, connection limits
+  A-->>S: role and database
+  S->>S: BackgroundWorkerInitializeConnectionByOid()
+  S-->>C: bearer token
+
+  Note over C,T: Query
+  C->>S: GetFlightInfo(CommandStatementQuery)
+  S->>V: active(): vexec.mode = auto or force?
+  alt vexec is off
+    S-->>C: FAILED_PRECONDITION
+  end
+  S->>S: parse and analyze: a saved plan source
+  S-->>C: FlightInfo: Arrow schema, ticket
+  C->>S: DoGet(ticket)
+  S->>E: plan from the plan cache, portal,<br/>DestReceiver from the egress API
+  E->>V: ExecutorRun_hook: the top Vec node's batches<br/>without rows#59; a row node's rows<br/>are gathered into batches
+  V->>V: IPC codec: Schema, then RecordBatch<br/>as pieces pointing into the batch's buffers
+  V-->>S: the message as a list of pieces
+  S-->>C: gRPC in HTTP/2 DATA frames:<br/>writev of the pieces, the body isn't copied
+  Note right of S: a slow client holds<br/>the session at one batch,<br/>nothing is spooled
+  S-->>C: trailers: grpc-status 0
+
+  Note over C,T: Insert
+  C->>S: DoPut(CommandStatementIngest) and a FlightData stream
+  S->>V: ingest_begin(the session's pull reader)
+  S->>E: INSERT INTO t (...) SELECT ...<br/>FROM vexec.ingest_stream(handle)
+  E->>V: VecIngest: next batch
+  V->>S: pull: next DoPut message
+  S-->>V: FlightData straight from the socket
+  V->>V: checked as client input: offsets,<br/>UTF-8, date ranges#59; Arrow buffers → batch
+  V->>V: VecInsert: NOT NULL by validity,<br/>CHECK, partitions as in COPY FROM
+  V->>T: PAX or ao_column sink: columns#59;<br/>otherwise table_multi_insert(), 1,000 rows at a time
+  S-->>C: PutResult: row count
