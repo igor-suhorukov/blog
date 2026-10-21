@@ -15,21 +15,21 @@ In between, there are ETL and CDC pipelines, plus on-call developers hunting for
 
 The other day I told him what I've been working on lately.
 
-"I've managed to plug ClickHouse's MergeTree table engine into PostgreSQL as a table access method, on a vanilla database core, without a fork, and with a vectorized query executor reading from it."
+— I've managed to plug ClickHouse's MergeTree table engine into PostgreSQL as a table access method, on a vanilla database core, without a fork, and with a vectorized query executor reading from it.
 
-"What for? Just use ClickHouse and spare yourself the pain."
+— What for? Just use ClickHouse and spare yourself the pain.
 
-"Because I need JOINs across lots of tables, consistent data throughout the system, and one platform that's familiar to develop and maintain."
+— Because I need JOINs across lots of tables, consistent data throughout the system, and one platform that's familiar to develop and maintain.
 
-"That's not how it works. It's either reliable or fast!"
+— That's not how it works. It's either reliable or fast!
 
-"Well, I've managed to combine the best of both worlds."
+— Well, I've managed to combine the best of both worlds.
 
 ## Vectorization hit a wall in heap
 
-"Wait a minute. Didn't you just port Greenplum into a Postgres extension and then write a vectorized executor on top of it? What do you need MergeTree for?"
+— Wait a minute. Didn't you just port Greenplum into a Postgres extension and then write a vectorized executor on top of it? What do you need MergeTree for?
 
-"Vectorization grinds through columns fast, but it chokes the moment it has to read the data."
+— Vectorization grinds through columns fast, but it chokes the moment it has to read the data.
 
 The backstory began when I ported [Apache Cloudberry to PostgreSQL 19](https://igor-suhorukov.github.io/blog/2026/09/30/greenplum-without-the-fork/) as a set of extensions, which got me ORCA, Greenplum's cost-based planner, on PostgreSQL 19. On top of that query optimizer I developed [pg_vexec](https://igor-suhorukov.github.io/blog/2026/10/07/vectorized-postgresql-extension/), a vectorized executor without a single core patch.
 
@@ -37,17 +37,17 @@ Its nodes, VecScan, VecHashJoin, VecAgg and VecSort, get into a query plan throu
 
 The first ClickBench measurement didn't make me happy: vectorization didn't speed things up much. With the standard planner on heap, pg_vexec cut the geometric mean query time by only 19%, from 625 to 506 ms, and under ORCA by 18%, from 1,647 to 1,349 ms.
 
-"18%, seriously? Was that worth building all the vectorization for?"
+— 18%, seriously? Was that worth building all the vectorization for?
 
-"Well, I ran a profiler and saw that the function kernels took only 0–2% of the total query execution time. Depending on the query, deforming wide rows ate 51–86% of the cycles of a GROUP BY, and hash table lookups 5%. Another 26–47% went to copying pages."
+— Well, I ran a profiler and saw that the function kernels took only 0–2% of the total query execution time. Depending on the query, deforming wide rows ate 51–86% of the cycles of a GROUP BY, and hash table lookups 5%. Another 26–47% went to copying pages.
 
 When a row weighs about 1.4 KB, 5–6 rows fit on a page, and a batch of 1,024 rows is smeared across roughly 180 pages. To get three of the benchmark table's 105 columns, heap dutifully pulls whole pages into memory. The Postgres table API hands out rows one at a time through a slot, and scan_begin() doesn't even take a list of the columns the query needs.
 
 Nor is there any way to skip the pages you don't need: heap offers no extension point for that. A simulation of such skipping made the same ClickBench queries 8–100× faster (Q20 went from 510 to 5.3 ms). But it was only a simulation.
 
-"So use a columnar store. PostgreSQL has a dozen of them."
+— So use a columnar store. PostgreSQL has a dozen of them.
 
-"Thanks for the advice, Captain Obvious :) On unmodified PostgreSQL 19, vexec couldn't find a single source that would hand it data column by column. Citus columnar and Hydra are columnar inside, but through the table AM API they hand out the very same slots, one row at a time. Greenplum's PAX and AOCO live only on the port's patched Postgres core: besides the extensions, the port also has a series of core patches. Sure, on 16 segments of gp_ao with ORCA + vexec the port squeezed out 105 ms, but that's sixteen segments against a single node, and still a fork of the database core, which is exactly what I wanted to get away from."
+— Thanks for the advice, Captain Obvious :) On unmodified PostgreSQL 19, vexec couldn't find a single source that would hand it data column by column. Citus columnar and Hydra are columnar inside, but through the table AM API they hand out the very same slots, one row at a time. Greenplum's PAX and AOCO live only on the port's patched Postgres core: besides the extensions, the port also has a series of core patches. Sure, on 16 segments of gp_ao with ORCA + vexec the port squeezed out 105 ms, but that's sixteen segments against a single node, and still a fork of the database core, which is exactly what I wanted to get away from.
 
 That's how my plan got a new task: bring in the MergeTree family of table engines and try to catch up with ClickHouse on ClickBench.
 
@@ -82,17 +82,17 @@ CREATE TABLE hits (...) USING mergetree
     WITH (order_by = 'CounterID, EventDate, UserID', storage = 'pages');
 ```
 
-"So you just linked ClickHouse into a Postgres backend?"
+— So you just linked ClickHouse into a Postgres backend?
 
-"It's not that simple. MergeTree doesn't build on its own: it's part of ClickHouse's dbms library and drags the interpreter, the parsers and the functions along with it. Of about a hundred and fifty submodules, only 28 were needed. Static linking produces libchte_engine.so. Nor can you take the ready-made StorageMergeTree, with its multithreaded model of a single server process. When a second process tries to get into its directory, you get 'Another server instance in same directory is already running', and Postgres creates a separate process for every connection. So it took some duct tape of my own to strap it onto PostgreSQL."
+— It's not that simple. MergeTree doesn't build on its own: it's part of ClickHouse's dbms library and drags the interpreter, the parsers and the functions along with it. Of about a hundred and fifty submodules, only 28 were needed. Static linking produces libchte_engine.so. Nor can you take the ready-made StorageMergeTree, with its multithreaded model of a single server process. When a second process tries to get into its directory, you get "Another server instance in same directory is already running", and Postgres creates a separate process for every connection. So it took some duct tape of my own to strap it onto PostgreSQL.
 
 But MergeTree is of little use with the standard Postgres executor. Without the vectorized executor, MergeTree lost even to heap: under ORCA, the TPC-H SF1 queries took 61.8 s in total against 17.2 s for heap with the stock executor, and TPC-DS 380.5 s against 58.8 s. With pg_vexec, the same queries on MergeTree ran in 6.9 s and 48.6 s. Without that piece, you'd get a columnar store that hands out data row by row through a slot, like a slow heap.
 
 ## UPDATE doesn't bloat the table
 
-"Fine, so much for analytics. But admit it: updating data in Postgres while long transactions are running is a pain. Every UPDATE is a new row version, dead tuples pile up, and autovacuum huffs and puffs. When we first put our system into production, table bloat was a problem for us. We had to shorten our transactions and move the analytical queries out of Postgres."
+— Fine, so much for analytics. But admit it: updating data in Postgres while long transactions are running is a pain. Every UPDATE is a new row version, dead tuples pile up, and autovacuum huffs and puffs. When we first put our system into production, table bloat was a problem for us. We had to shorten our transactions and move the analytical queries out of Postgres.
 
-"I do admit it! That's exactly why I made iheap, a PostgreSQL 19 table access method that overwrites a row in place, at the same TID. Its old version goes to an undo log, and only a reader whose snapshot needs it rebuilds it from there."
+— I do admit it! That's exactly why I made iheap, a PostgreSQL 19 table access method that overwrites a row in place, at the same TID. Its old version goes to an undo log, and only a reader whose snapshot needs it rebuilds it from there.
 
 The idea is similar to zheap, a project that people spent years trying to get into the core before abandoning it. I, however, managed to do something similar without a core patch. In PostgreSQL 19, the database's built-in mechanisms are enough to implement it, from a custom WAL resource manager to visibility horizons.
 
@@ -107,9 +107,9 @@ Undo lives in extents of the table's own main fork, so WAL, crash recovery, repl
 
 ## My PostgreSQL
 
-"All right. But why all this if ClickHouse is faster anyway?"
+— All right. But why all this if ClickHouse is faster anyway?
 
-"Because it's a great database for a huge metrics table with hundreds of columns. And what if the database also has to hold transactional data from different systems, with dozens of joins between tables? You can get all of it in PostgreSQL, in a single transaction. And a long-running transaction is no longer such a big problem under frequent updates: iheap tables don't bloat the way heap tables do. Unless you're Big Tech, why pile up the complexity of maintaining several systems?"
+— Because it's a great database for a huge metrics table with hundreds of columns. And what if the database also has to hold transactional data from different systems, with dozens of joins between tables? You can get all of it in PostgreSQL, in a single transaction. And a long-running transaction is no longer such a big problem under frequent updates: iheap tables don't bloat the way heap tables do. Unless you're Big Tech, why pile up the complexity of maintaining several systems?
 
 On my laptop, PostgreSQL 19 ran the ClickBench queries on 10 million rows only 3 times slower than ClickHouse with the same data on the same machine: 49.9 ms against 16.8 ms by geometric mean. Vanilla Postgres was 39 times slower than ClickHouse in those runs. The result is my own set of PostgreSQL extensions, [pg_vexec](https://github.com/igor-suhorukov/pg_vexec), [ch_table_engines](https://github.com/igor-suhorukov/pg_ch_table_engines) and [iheap](https://github.com/igor-suhorukov/pg_inplace_update_am), and not a single core patch. You simply choose the storage with the standard `CREATE TABLE ... USING` syntax: mergetree for metrics and wide tables, iheap for update-heavy tables without table and index bloat. Replicas, pg_dump and MVCC work as they do with ordinary heap, because PostgreSQL still takes care of them.
 
