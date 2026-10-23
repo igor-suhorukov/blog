@@ -1,0 +1,30 @@
+---
+title: "pg_knowledge_base: Oxigraph's SPARQL inside PostgreSQL 19"
+config:
+  flowchart:
+    wrappingWidth: 640
+---
+flowchart TB
+  SQLC["SQL clients:<br/>psql, drivers, BI tools"]
+  HTTPC["SPARQL 1.1 clients:<br/>curl, SPARQLWrapper, ..."]
+
+  subgraph PG["PostgreSQL 19, unmodified core"]
+    ACC["Endpoint acceptor, a background worker:<br/>logins by pg_hba.conf and the role's password, TLS"]
+    EXT["pg_knowledge_base (C), in a backend or in an endpoint session<br/>(a background worker per connection):<br/>kb.sparql(), kb.sparql_update(), kb.load(), kb.add_mapping();<br/>/db/query, /db/update, /db/sparql, /db/store"]
+    ENG["libkb_engine.so (Rust),<br/>Oxigraph's crates:<br/>spargebra → sparopt → spareval,<br/>sparesults, oxrdfio"]
+    STORE[("RDF store:<br/>kb.quads, four 16-byte term keys<br/>in six btree orders;<br/>kb.terms, the dictionary")]
+    TABLES[("Your tables:<br/>employees, orders, ...")]
+    WAL[["WAL"]]
+  end
+
+  REPL["Hot standbys answer SPARQL through SQL;<br/>logical subscribers; pg_basebackup and PITR"]
+
+  SQLC -->|"libpq"| EXT
+  HTTPC -->|"HTTP/1.1, TLS"| ACC
+  ACC -->|"the socket, after the login"| EXT
+  EXT <-->|"C ABI:<br/>the host's callbacks"| ENG
+  EXT -->|"index-only scans<br/>in the caller's snapshot;<br/>INSERT, DELETE through SPI"| STORE
+  EXT -->|"R2RML: SQL through SPI,<br/>as the querying role"| TABLES
+  STORE --> WAL
+  TABLES --> WAL
+  WAL --> REPL
