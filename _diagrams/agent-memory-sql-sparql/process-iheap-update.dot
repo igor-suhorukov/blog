@@ -1,0 +1,16 @@
+digraph process {
+  graph [rankdir=LR, fontname="DejaVu Sans", fontsize=16, labelloc=t, nodesep=0.5, ranksep=0.45, pad=0.3, forcelabels=true, bgcolor="white", label="Updating a row in an iheap table"];
+  node [fontname="DejaVu Sans", fontsize=12, fontcolor="#202124"];
+  edge [fontname="DejaVu Sans", fontsize=11, color="#5f6368", arrowsize=0.8, penwidth=1.3];
+  "https://example.org/story-kg/id/habr-1097022/proc_iheap_update.e1" [shape=circle, fixedsize=true, width=0.5, label="", style=filled, fillcolor="#fce8e6", color="#c5221f", penwidth=4, xlabel=<<TABLE BORDER="0" CELLBORDER="0" CELLSPACING="1"><TR><TD>The row is updated<BR/>without a new version in<BR/>the table</TD></TR></TABLE>>];
+  "https://example.org/story-kg/id/habr-1097022/proc_iheap_update.s0" [shape=circle, fixedsize=true, width=0.5, label="", style=filled, fillcolor="#e6f4ea", color="#2e7d32", penwidth=2, xlabel=<<TABLE BORDER="0" CELLBORDER="0" CELLSPACING="1"><TR><TD>UPDATE of a row of an<BR/>iheap table</TD></TR><TR><TD><FONT POINT-SIZE="10" COLOR="#5f6368">tools: iheap<BR/>(pg_inplace_update_am)</FONT></TD></TR></TABLE>>];
+  "https://example.org/story-kg/id/habr-1097022/proc_iheap_update.t1" [shape=box, style="rounded,filled", fillcolor="#f3e8fd", color="#8430ce", penwidth=1.5, margin="0.15,0.08", label=<<TABLE BORDER="0" CELLBORDER="0" CELLSPACING="1"><TR><TD>⚙ Overwrite the row in<BR/>place at the same TID</TD></TR></TABLE>>];
+  "https://example.org/story-kg/id/habr-1097022/proc_iheap_update.t2" [shape=box, style="rounded,filled", fillcolor="#f3e8fd", color="#8430ce", penwidth=1.5, margin="0.15,0.08", label=<<TABLE BORDER="0" CELLBORDER="0" CELLSPACING="1"><TR><TD>⚙ Move the old row<BR/>version to the undo log<BR/>in the table's extents</TD></TR></TABLE>>];
+  "https://example.org/story-kg/id/habr-1097022/proc_iheap_update.t3" [shape=box, style="rounded,filled", fillcolor="#f3e8fd", color="#8430ce", penwidth=1.5, margin="0.15,0.08", label=<<TABLE BORDER="0" CELLBORDER="0" CELLSPACING="1"><TR><TD>⚙ Mark the old index<BR/>entry deleted and add a<BR/>new one only to the<BR/>indexes whose keys<BR/>changed</TD></TR><TR><TD><FONT POINT-SIZE="10" COLOR="#5f6368">tools: dmbtree</FONT></TD></TR></TABLE>>];
+  "https://example.org/story-kg/id/habr-1097022/proc_iheap_update.t4" [shape=box, style="rounded,filled", fillcolor="#f3e8fd", color="#8430ce", penwidth=1.5, margin="0.15,0.08", label=<<TABLE BORDER="0" CELLBORDER="0" CELLSPACING="1"><TR><TD>⚙ A reader whose<BR/>snapshot needs the old<BR/>version rebuilds it from<BR/>the undo log</TD></TR></TABLE>>];
+  "https://example.org/story-kg/id/habr-1097022/proc_iheap_update.s0" -> "https://example.org/story-kg/id/habr-1097022/proc_iheap_update.t1";
+  "https://example.org/story-kg/id/habr-1097022/proc_iheap_update.t1" -> "https://example.org/story-kg/id/habr-1097022/proc_iheap_update.t2";
+  "https://example.org/story-kg/id/habr-1097022/proc_iheap_update.t2" -> "https://example.org/story-kg/id/habr-1097022/proc_iheap_update.t3";
+  "https://example.org/story-kg/id/habr-1097022/proc_iheap_update.t3" -> "https://example.org/story-kg/id/habr-1097022/proc_iheap_update.t4";
+  "https://example.org/story-kg/id/habr-1097022/proc_iheap_update.t4" -> "https://example.org/story-kg/id/habr-1097022/proc_iheap_update.e1";
+}

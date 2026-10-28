@@ -1,0 +1,27 @@
+---
+title: "How the agent reaches its memory"
+config:
+  flowchart:
+    wrappingWidth: 300
+---
+flowchart TB
+  OR["OpenRouter:<br/>DeepSeek V4.1 Flash, Gemma 4 31B, Qwen 3.8 27B"]
+  AG["Own agent loop on langchain4j:<br/>up to 16 model calls,<br/>up to 12 memory queries"]
+  SC["submit_answer → rule-based check<br/>→ JSONL with the answer, tokens, cost and trace"]
+
+  subgraph MCP["Memory MCP server, stdio"]
+    SQLT["sql_query<br/>role agent_sql"]
+    SPT["sparql_query<br/>role agent_sparql"]
+  end
+
+  subgraph PG["PostgreSQL 19 + pg_knowledge_base"]
+    TAB[("34 tables<br/>of schema habr_1097022")]
+    GR[("The same graph through R2RML:<br/>kb.sparql_json()")]
+  end
+
+  AG <-->|"messages, tool calls,<br/>usage.cost"| OR
+  AG -->|"condition: sql, sparql or both"| MCP
+  AG --> SC
+  SQLT -->|"read-only, 5 s"| TAB
+  SPT -->|"read-only, 5 s"| GR
+  GR -.->|"reads rows"| TAB

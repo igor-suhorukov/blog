@@ -25,7 +25,8 @@ Registered feed URL: <https://igor-suhorukov.github.io/blog/feed/postgresql.xml>
 - Feed readers and Planet do not run JavaScript, so Mermaid diagrams are
   embedded as PNGs with absolute URLs. Keep the sources in
   `_diagrams/<slug>/*.mmd` and render them to `assets/posts/<slug>/` with
-  `scripts/render-diagrams.sh <slug>` (needs Docker).
+  `scripts/render-diagrams.sh <slug>` (needs Docker). The script also renders
+  Graphviz sources, `_diagrams/<slug>/*.dot`, with the local `dot`.
 
 ## Local preview
 

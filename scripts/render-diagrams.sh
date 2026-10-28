@@ -1,10 +1,12 @@
 #!/usr/bin/env bash
 # Renders the Mermaid sources in _diagrams/<post>/*.mmd to PNG files in
-# assets/posts/<post>/ with the Mermaid CLI Docker image. Feed readers and
-# Planet PostgreSQL do not run JavaScript, so posts embed the PNGs.
+# assets/posts/<post>/ with the Mermaid CLI Docker image, and the Graphviz
+# sources (*.dot) with the local dot. Feed readers and Planet PostgreSQL do not
+# run JavaScript, so posts embed the PNGs.
 #
 # Usage: scripts/render-diagrams.sh [post-slug ...]   (default: every post)
 set -euo pipefail
+shopt -s nullglob
 
 cd "$(dirname "$0")/.."
 image=minlag/mermaid-cli:12.0.0
@@ -25,5 +27,10 @@ for post in "${posts[@]}"; do
       --input "/data/$src" --output "/data/$out" \
       --configFile /data/_diagrams/mermaid-config.json \
       --backgroundColor white --scale 2
+  done
+  for src in "_diagrams/$post"/*.dot; do
+    out="assets/posts/$post/$(basename "$src" .dot).png"
+    echo "$src -> $out"
+    dot -Tpng -Gdpi=110 -o "$out" "$src"
   done
 done
