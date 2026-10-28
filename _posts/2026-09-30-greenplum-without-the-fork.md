@@ -1,5 +1,6 @@
 ---
 title: "Greenplum without the fork: Apache Cloudberry as PostgreSQL 19 Extensions"
+date: 2026-09-30 13:53:00 +0700
 tags: [postgresql, greenplum, cloudberry, mpp]
 excerpt: >-
   A personal experiment: Apache Cloudberry, the most up-to-date open-source

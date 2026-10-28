@@ -1,5 +1,6 @@
 ---
 title: "A knowledge base without a second database: Oxigraph's SPARQL in PostgreSQL 19"
+date: 2026-10-23 11:57:00 +0700
 tags: [postgresql, sparql, rdf, oxigraph, knowledge-graph, r2rml]
 excerpt: >-
   pg_knowledge_base runs Oxigraph's SPARQL engine inside PostgreSQL 19. RDF

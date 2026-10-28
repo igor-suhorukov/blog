@@ -1,5 +1,6 @@
 ---
 title: "Vectorized Query Execution in PostgreSQL 19: Arrow, ORCA and Flight SQL in a PostgreSQL Extension"
+date: 2026-10-07 21:06:22 +0700
 tags: [postgresql, vectorization, arrow, flight-sql, orca, cloudberry]
 excerpt: >-
   pg_vexec, a family of extensions for PostgreSQL 19: a vectorized planner

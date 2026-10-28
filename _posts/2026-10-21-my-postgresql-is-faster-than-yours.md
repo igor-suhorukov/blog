@@ -1,5 +1,6 @@
 ---
 title: "My PostgreSQL is faster than yours and has almost caught up with ClickHouse"
+date: 2026-10-21 14:57:28 +0700
 tags: [postgresql, clickhouse, mergetree, table-access-method, vectorization, clickbench]
 excerpt: >-
   ClickHouse's MergeTree table engine plugged into PostgreSQL 19 as a table

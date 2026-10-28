@@ -7,6 +7,8 @@ description: >-
 url: "https://igor-suhorukov.github.io"
 baseurl: "/blog"
 lang: en
+# Post times and permalink dates use this zone; GitHub Pages builds in UTC.
+timezone: Asia/Bangkok  # ICT, UTC+7
 github_username: igor-suhorukov
 
 theme: minima
