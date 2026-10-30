@@ -1,6 +1,6 @@
 ---
 title: "pg_vexec one month on: ahead of ClickHouse on Parquet, close behind on MergeTree"
-date: 2026-10-31 03:10:54 +0700
+date: 2026-10-30 23:07:00 +0700
 tags: [postgresql, clickhouse, clickbench, mergetree, parquet, vectorization, gpu]
 excerpt: >-
   A month after porting Greenplum to PostgreSQL 19, pg_vexec beats ClickHouse
